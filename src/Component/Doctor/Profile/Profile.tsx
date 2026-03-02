@@ -1,19 +1,21 @@
-import { Avatar, Button, Divider, Modal, NumberInput, Select, Table, TagsInput, TextInput } from "@mantine/core";
+import { Avatar, Button, Divider, Modal, NumberInput, Select, Table, TextInput } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { IconEdit } from "@tabler/icons-react";
 import { useState } from "react";
 import { useSelector } from "react-redux";
-import { bloodGroups } from "../../../Data/DropDown";
+import { doctorDepartments, doctorSpecializations } from "../../../Data/DropDown";
 import { useDisclosure } from "@mantine/hooks";
 
-const patient = {
-  dob: "1998-05-14",
+const doctor = {
+  name: "Dr. Rajesh Sharma",
+  email: "rajesh.sharma@example.com",
+  dob: "1990-08-12",
   phone: "9876543210",
   address: "Virar, Maharashtra",
-  aadharNo: "1234 5678 9012",
-  bloodGroup: "O+",
-  allergies: "Peanuts",
-  chronicDisease: "Diabetes",
+  licenseNo: "MH-2020-456789",
+  specialization: "Cardiologist",
+  department: "Cardiology",
+  totalExp: 8
 };
 
 const Profile = () => {
@@ -81,7 +83,7 @@ const Profile = () => {
                   <DateInput placeholder="Date Of Birth" />
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{patient.dob}</Table.Td>
+                <Table.Td className="text-xl">{doctor.dob}</Table.Td>
               )}
             </Table.Tr>
 
@@ -95,7 +97,7 @@ const Profile = () => {
                   <NumberInput maxLength={10} clampBehavior="strict" placeholder="Phone Number" hideControls/>
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{patient.phone}</Table.Td>
+                <Table.Td className="text-xl">{doctor.phone}</Table.Td>
               )}
             </Table.Tr>
 
@@ -109,37 +111,37 @@ const Profile = () => {
                   <TextInput placeholder="Address" />
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{patient.address}</Table.Td>
+                <Table.Td className="text-xl">{doctor.address}</Table.Td>
               )}
             </Table.Tr>
 
             <Table.Tr>
               <Table.Td className="font-semibold text-gray-600 text-xl">
-                Aadhar Number
+                License Number
               </Table.Td>
               {editMode ? (
                 <Table.Td className="text-xl">
                   {" "}
-                  <NumberInput maxLength={10} clampBehavior="strict" placeholder="Aadhar Number" hideControls/>
+                  <NumberInput maxLength={10} clampBehavior="strict" placeholder="License Number" hideControls/>
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{patient.aadharNo}</Table.Td>
+                <Table.Td className="text-xl">{doctor.licenseNo}</Table.Td>
               )}
             </Table.Tr>
 
             <Table.Tr>
               <Table.Td className="font-semibold text-gray-600 text-xl">
-                Blood Group
+                Specialization
               </Table.Td>
               {editMode ? (
                 <Table.Td className="text-xl">
                   {" "}
-                  <Select data={bloodGroups} placeholder="Blood Group"  />
+                  <Select data={doctorSpecializations} placeholder="Specialization"  />
                 </Table.Td>
               ) : (
                 <Table.Td className="text-xl">
                   <span className="px-3 py-1 rounded-full bg-red-100 text-red-600 font-medium">
-                    {patient.bloodGroup}
+                    {doctor.specialization}
                   </span>
                 </Table.Td>
               )}
@@ -153,30 +155,30 @@ const Profile = () => {
 
             <Table.Tr>
               <Table.Td className="font-semibold text-gray-600 text-xl">
-                Allergies
+                Department
               </Table.Td>
               {editMode ? (
                 <Table.Td className="text-xl">
                   {" "}
-                  <TagsInput label="Press Enter to submit a tag" placeholder="Allergies" />
+                <Select data={doctorDepartments} placeholder="Department"  />
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{patient.allergies}</Table.Td>
+                <Table.Td className="text-xl">{doctor.department}</Table.Td>
               )}
             </Table.Tr>
 
             <Table.Tr>
               <Table.Td className="font-semibold text-gray-600 text-xl">
-                Chronic Disease
+                Total Experience
               </Table.Td>
               {editMode ? (
                 <Table.Td className="text-xl">
                   {" "}
-                  <TagsInput label="Press Enter to submit a tag" placeholder="Chronic Disease" />
+                  <NumberInput maxLength={2} max={50} clampBehavior="strict" placeholder="Total Experience" hideControls/>
                 </Table.Td>
               ) : (
                 <Table.Td className="text-xl">
-                  {patient.chronicDisease}
+                  {doctor.totalExp}
                 </Table.Td>
               )}
             </Table.Tr>
