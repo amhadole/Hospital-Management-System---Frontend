@@ -1,5 +1,5 @@
 const formatDate=(dateString: string | Date)=>{
-    if(!dateString) return "-";
+    if(!dateString) return undefined;
     const date = new Date(dateString);
 
     return date.toLocaleDateString("en-GB",{

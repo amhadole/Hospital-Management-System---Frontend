@@ -3,34 +3,31 @@ import { DateInput } from "@mantine/dates";
 import { IconEdit } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { useSelector } from "react-redux";
-import { bloodGroups } from "../../../Data/DropDown";
+import { bloodGroup, bloodGroups } from "../../../Data/DropDown";
 import { useDisclosure } from "@mantine/hooks";
 import { getPatient, updatePatient } from "../../../Service/PatientProfileServices";
 import { formatDate } from "../../../Utility/DateUtility";
 import { useForm } from "@mantine/form";
 import { errorNotification, successNotification } from "../../../Utility/Notification";
+import { arrayToCSV } from "../../../Utility/OtherUtility";
 import { PatientFormValues } from "./PatientFormValues";
-
-// const patient = {
-//   dob: "1998-05-14",
-//   phone: "9876543210",
-//   address: "Virar, Maharashtra",
-//   aadharNo: "1234 5678 9012",
-//   bloodGroup: "O+",
-//   allergies: "Peanuts",
-//   chronicDisease: "Diabetes",
-// };
 
 const Profile = () => {
   const user = useSelector((state: any) => state.user);
   const [editMode, setEdit] = useState(false);
   const [opened, {open, close}] = useDisclosure(false);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<any>({});
+
   useEffect(()=>{
-    if(!user?.profileId) return;
-    getPatient(user.profileId).then((data)=>{
-      setProfile(data);
-    }).catch((error)=>{
+    getPatient(user.profileId).then((res)=>{
+      const data = res.data;
+setProfile({
+        ...data,
+        allergies: data.allergies ? JSON.parse(data.allergies) : [],
+        chronicDisease: data.chronicDisease
+          ? JSON.parse(data.chronicDisease)
+          : [],
+      })    }).catch((error)=>{
       console.log(error);
     })
   },[user]);
@@ -38,7 +35,7 @@ const Profile = () => {
  const form = useForm<PatientFormValues>({
     
     initialValues: {
-      dob: null as Date | null,
+      dob: null,
       phone: "",
       address: "",
       aadharNo: "",
@@ -48,54 +45,38 @@ const Profile = () => {
     },
 
     validate: {
-        dob: (value) => (!value ? 'Date of Birth is required' : null),
-        phone: (value) => (!value ? 'Phone number is required' : null),
-        address: (value) => (!value ? 'Address is required' : null),
-        aadharNo: (value) => (!value ? 'Aadhar Number is required' : null),
+        dob: (value: Date | null) => (!value ? 'Date of Birth is required' : null),
+        phone: (value: string) => (!value ? 'Phone number is required' : null),
+        address: (value: string) => (!value ? 'Address is required' : null),
+        aadharNo: (value: string) => (!value ? 'Aadhar Number is required' : null),
     },
   });
 
   const handleEdit=()=>{
-    if (!profile) return;
-
-    form.setValues({
-      dob: profile.dob ? new Date(profile.dob) : null,
-      phone: profile.phone || "",
-      address: profile.address || "",
-      aadharNo: profile.aadharNo || "",
-      bloodGroup: profile.bloodGroup || "",
-      allergies: profile.allergies || [],
-      chronicDisease: profile.chronicDisease || [],
-    });
-
+    form.setValues({...profile, dob: profile.dob?new Date(profile.dob):undefined, chronicDisease: profile.chronicDisease??[], allergies: profile.allergies ?? []});
     setEdit(true);
   };
 
-  const handleSubmit = (values: PatientFormValues)=>{
-    if(!profile?.id){
-      errorNotification("Profile ID Missing");
-      return;
-    }
-    const payload = {
-      ...profile,
-      ...values,
-      dob: values.dob ? values.dob.toISOString() : null,
-    };
-
-    updatePatient(payload).then((data) =>{
-      successNotification("Profile Updated Successfully");
-      setProfile(data);
+  const handleSubmit = (e: any)=>{
+    let values = form.getValues();
+    form.validate();
+    if(!form.isValid()) return;
+    console.log(values);
+    updatePatient({...profile, ...values, allergies: values.allergies ? JSON.stringify(values.allergies): null, chronicDisease: values.chronicDisease?.length
+    ? JSON.stringify(values.chronicDisease)
+    : null}).then((_data)=>{
+      successNotification("Profile Update Successfully");  
+      setProfile({...profile, ...values});
       setEdit(false);
     }).catch((error)=>{
-      errorNotification(error?.response?.data?.errorMessage || "Update failed");
-    });
-    
+      errorNotification(error.res.data.errorMessage);
+    })
   };
 
   if(!profile) return null;
 
   return (
-    <form onSubmit={form.onSubmit(handleSubmit)}  className="p-10">
+    <div className="p-10">
       <div className="flex justify-between items-center">
         <div className="flex gap-5 items-center">
           <div className="flex flex-col items-center gap-3">
@@ -129,6 +110,7 @@ const Profile = () => {
           <Button
             size="md"
             type="submit"
+            onClick={handleSubmit}
             variant="filled"
           >
             Save
@@ -146,7 +128,7 @@ const Profile = () => {
           verticalSpacing="md"
           withRowBorders={false}
         >
-          <Table.Tbody>
+          <Table.Tbody className="[&>tr]:!mb-3 [&_td]:!w-1/2">
             <Table.Tr>
               <Table.Td className="font-semibold text-gray-600 w-1/3 text-xl">
                 Date of Birth
@@ -156,7 +138,7 @@ const Profile = () => {
                   <DateInput {...form.getInputProps("dob")} placeholder="Date Of Birth" />
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{formatDate(profile.dob)}</Table.Td>
+                <Table.Td className="text-xl">{formatDate(profile.dob)??'-'}</Table.Td>
               )}
             </Table.Tr>
 
@@ -215,7 +197,7 @@ const Profile = () => {
                 <Table.Td className="text-xl">
                   {profile?.bloodGroup ?(
                     <span className="px-3 py-1 rounded-full bg-red-100 text-red-600 font-medium">
-                  {profile.bloodGroup}
+                  {bloodGroup[profile.bloodGroup]}
                 </span>
                   ):(
                     '-'
@@ -240,7 +222,7 @@ const Profile = () => {
                   <TagsInput {...form.getInputProps("allergies")} label="Press Enter to submit a tag" placeholder="Allergies" />
                 </Table.Td>
               ) : (
-                <Table.Td className="text-xl">{profile.allergies??'-'}</Table.Td>
+                <Table.Td className="text-xl">{arrayToCSV(profile.allergies)??'-'}</Table.Td>
               )}
             </Table.Tr>
 
@@ -255,7 +237,7 @@ const Profile = () => {
                 </Table.Td>
               ) : (
                 <Table.Td className="text-xl">
-                  {profile.chronicDisease?? '-'}
+                  {arrayToCSV(profile.chronicDisease)?? '-'}
                 </Table.Td>
               )}
             </Table.Tr>
@@ -264,7 +246,7 @@ const Profile = () => {
       </div>
       <Modal centered opened={opened} onClose={close} title={<span className="text-xl font-medium">Upload Profile Picture</span>}>
       </Modal>
-    </form>
+    </div>
   );
 };
 
