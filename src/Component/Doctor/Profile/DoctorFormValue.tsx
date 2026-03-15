@@ -6,4 +6,10 @@ export interface DoctorFormValue{
     specialization: string;
     department: string;
     totalExp: string;
+
+    workStart: string;
+    workEnd: string;
+    breakStart: string;
+    breakEnd: string;
+    slotDuration: number | string;
 }
