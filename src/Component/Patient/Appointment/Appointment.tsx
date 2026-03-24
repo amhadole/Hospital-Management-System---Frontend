@@ -3,20 +3,21 @@ import { FilterMatchMode, FilterOperator } from "primereact/api";
 import { DataTable, DataTableFilterMeta } from "primereact/datatable";
 import { Column, ColumnFilterElementTemplateOptions } from "primereact/column";
 import { Dropdown, DropdownChangeEvent } from "primereact/dropdown";
-import { InputNumber } from "primereact/inputnumber";
-
-import { ProgressBar } from "primereact/progressbar";
-import { Calendar } from "primereact/calendar";
-import { MultiSelect, MultiSelectChangeEvent } from "primereact/multiselect";
-import { Slider, SliderChangeEvent } from "primereact/slider";
 import { Tag } from "primereact/tag";
-import { Button, Modal, Select, Textarea, TextInput } from "@mantine/core";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { ActionIcon, Button, Modal, Select, Text, Textarea, TextInput } from "@mantine/core";
+import { IconPlus, IconSearch, IconTrash } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import { getDoctorDropdown } from "../../../Service/DoctorProfileServices";
-import { DateTimePicker } from "@mantine/dates";
+import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
-// import { CustomerService } from './service/CustomerService';
+import { ScheduleAppointmentFormValue } from "./ScheduleAppointmentFormValue";
+import { cancleAppointment, getAllAppointmentByPatient, getAvailableSlots, scheduleAppointment } from "../../../Service/AppointmentService";
+import { useSelector } from "react-redux";
+import { errorNotification, successNotification } from "../../../Utility/Notification";
+import { appointmentReasons } from "../../../Data/DropDown";
+import { formateDateWithTime } from "../../../Utility/DateUtility";
+import { modals } from "@mantine/modals";
+
 
 interface Country {
   name: string;
@@ -42,48 +43,29 @@ interface Customer {
 }
 
 const Appointment = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [opened, { open, close }] = useDisclosure(false);
   const[doctors, setDoctors] = useState<any[]>([]);
-  const [selectedCustomers, setSelectedCustomers] = useState<Customer[]>([]);
+  const [slots, setSlots] = useState<string[]>([]);
+  const [appointment, setAppointment] = useState<any[]>([]);
+  const user = useSelector((state: any)=>state.user);
   const [filters, setFilters] = useState<DataTableFilterMeta>({
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    name: {
+    doctorName: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
     },
-    "country.name": {
+    reason: {
       operator: FilterOperator.AND,
       constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
     },
-    representative: { value: null, matchMode: FilterMatchMode.IN },
-    date: {
+     note: {
       operator: FilterOperator.AND,
-      constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }],
+      constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
     },
-    balance: {
-      operator: FilterOperator.AND,
-      constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }],
-    },
-    status: {
-      operator: FilterOperator.OR,
-      constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }],
-    },
-    activity: { value: null, matchMode: FilterMatchMode.BETWEEN },
+    status: { value: null, matchMode: FilterMatchMode.IN }, 
   });
   const [globalFilterValue, setGlobalFilterValue] = useState<string>("");
-  const [representatives] = useState<Representative[]>([
-    { name: "Amy Elsner", image: "amyelsner.png" },
-    { name: "Anna Fali", image: "annafali.png" },
-    { name: "Asiya Javayant", image: "asiyajavayant.png" },
-    { name: "Bernardo Dominic", image: "bernardodominic.png" },
-    { name: "Elwin Sharvill", image: "elwinsharvill.png" },
-    { name: "Ioni Bowcher", image: "ionibowcher.png" },
-    { name: "Ivan Magalhaes", image: "ivanmagalhaes.png" },
-    { name: "Onyama Limba", image: "onyamalimba.png" },
-    { name: "Stephen Shaw", image: "stephenshaw.png" },
-    { name: "XuXue Feng", image: "xuxuefeng.png" },
-  ]);
+  
   const [statuses] = useState<string[]>([
     "unqualified",
     "qualified",
@@ -94,19 +76,16 @@ const Appointment = () => {
 
   const getSeverity = (status: string) => {
     switch (status) {
-      case "unqualified":
+      case "CANCELLED":
         return "danger";
 
-      case "qualified":
+      case "COMPLETED":
         return "success";
 
-      case "new":
+      case "SCHEDULED":
         return "info";
 
-      case "negotiation":
-        return "warning";
-
-      case "renewal":
+      default:
         return null;
     }
   };
@@ -114,6 +93,14 @@ const Appointment = () => {
 
   // Load Doctor
   useEffect(() => {
+
+    getAllAppointmentByPatient(user.profileId).then((res)=>{
+      console.log(res.data);
+      setAppointment(res.data);
+    }).catch((error)=>{
+      console.error("Error fetching appointment:", error)
+    });
+
     getDoctorDropdown().then((res)=>{
         const data = res.data;
         console.log(data);
@@ -126,11 +113,11 @@ const Appointment = () => {
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const form = useForm({
+  const form = useForm<ScheduleAppointmentFormValue>({
     initialValues:{
         doctorId:"",
-        patientId:"",
-        appointmentDateTime: null as Date | null,
+        patientId: "",
+        appointmentDate: null,
         slot:"",
         reason:"",
         note:""
@@ -138,33 +125,30 @@ const Appointment = () => {
 
     validate:{
         doctorId:(value)=>!value?'Doctor is required' : undefined,
-        appointmentDateTime: (value) =>!value ? 'Appointment Date And Time is Required':undefined,
+        appointmentDate: (value) =>!value ? 'Appointment Date is Required':undefined,
         reason:(value) => !value ? 'Reason for appointment is required' : undefined
     }
   })
 
-  const getCustomers = (data: Customer[]) => {
-    return [...(data || [])].map((d) => {
-      d.date = new Date(d.date);
+    useEffect(()=>{
+    if(!form.values.doctorId || !form.values.appointmentDate) return;
+    const dateObj = 
+    form.values.appointmentDate instanceof Date
+        ? form.values.appointmentDate
+        : new Date(form.values.appointmentDate as any);
 
-      return d;
-    });
-  };
+    const formattedDate = dateObj.toISOString().split("T")[0];
 
-  const formatDate = (value: string | Date) => {
-    return new Date(value).toLocaleDateString("en-US", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  };
+    getAvailableSlots(form.values.doctorId, formattedDate)
+      .then((res: any) => setSlots(res.data))
+      .catch(() => setSlots([]));
+  }, [form.values.doctorId, form.values.appointmentDate]);
 
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("en-US", {
-      style: "currency",
-      currency: "USD",
-    });
-  };
+ 
+
+ 
+
+ 
 
   const onGlobalFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -192,102 +176,12 @@ const Appointment = () => {
     );
   };
 
-  const countryBodyTemplate = (rowData: Customer) => {
-    return (
-      <div className="flex align-items-center gap-2">
-        <img
-          alt="flag"
-          src="https://primefaces.org/cdn/primereact/images/flag/flag_placeholder.png"
-          className={`flag flag-${rowData.country.code}`}
-          style={{ width: "24px" }}
-        />
-        <span>{rowData.country.name}</span>
-      </div>
-    );
-  };
 
-  const representativeBodyTemplate = (rowData: Customer) => {
-    const representative = rowData.representative;
 
-    return (
-      <div className="flex align-items-center gap-2">
-        <img
-          alt={representative.name}
-          src={`https://primefaces.org/cdn/primereact/images/avatar/${representative.image}`}
-          width="32"
-        />
-        <span>{representative.name}</span>
-      </div>
-    );
-  };
+ 
+  
 
-  const representativeFilterTemplate = (
-    options: ColumnFilterElementTemplateOptions,
-  ) => {
-    return (
-      <React.Fragment>
-        <div className="mb-3 font-bold">Agent Picker</div>
-        <MultiSelect
-          value={options.value}
-          options={representatives}
-          itemTemplate={representativesItemTemplate}
-          onChange={(e: MultiSelectChangeEvent) =>
-            options.filterCallback(e.value)
-          }
-          optionLabel="name"
-          placeholder="Any"
-          className="p-column-filter"
-        />
-      </React.Fragment>
-    );
-  };
-
-  const representativesItemTemplate = (option: Representative) => {
-    return (
-      <div className="flex align-items-center gap-2">
-        <img
-          alt={option.name}
-          src={`https://primefaces.org/cdn/primereact/images/avatar/${option.image}`}
-          width="32"
-        />
-        <span>{option.name}</span>
-      </div>
-    );
-  };
-
-  const dateBodyTemplate = (rowData: Customer) => {
-    return formatDate(rowData.date);
-  };
-
-  const dateFilterTemplate = (options: ColumnFilterElementTemplateOptions) => {
-    return (
-      <Calendar
-        value={options.value}
-        onChange={(e) => options.filterCallback(e.value, options.index)}
-        dateFormat="mm/dd/yy"
-        placeholder="mm/dd/yyyy"
-        mask="99/99/9999"
-      />
-    );
-  };
-
-  const balanceBodyTemplate = (rowData: Customer) => {
-    return formatCurrency(rowData.balance);
-  };
-
-  const balanceFilterTemplate = (
-    options: ColumnFilterElementTemplateOptions,
-  ) => {
-    return (
-      <InputNumber
-        value={options.value}
-        onChange={(e) => options.filterCallback(e.value, options.index)}
-        mode="currency"
-        currency="USD"
-        locale="en-US"
-      />
-    );
-  };
+  
 
   const statusBodyTemplate = (rowData: Customer) => {
     return (
@@ -317,123 +211,132 @@ const Appointment = () => {
     return <Tag value={option} severity={getSeverity(option)} />;
   };
 
-  const activityBodyTemplate = (rowData: Customer) => {
-    return (
-      <ProgressBar
-        value={rowData.activity}
-        showValue={false}
-        style={{ height: "6px" }}
-      ></ProgressBar>
-    );
-  };
+  
 
-  const activityFilterTemplate = (
-    options: ColumnFilterElementTemplateOptions,
-  ) => {
-    return (
-      <>
-        <Slider
-          value={options.value}
-          onChange={(e: SliderChangeEvent) => options.filterCallback(e.value)}
-          range
-          className="m-3"
-        ></Slider>
-        <div className="flex align-items-center justify-content-between px-2">
-          <span>{options.value ? options.value[0] : 0}</span>
-          <span>{options.value ? options.value[1] : 100}</span>
-        </div>
-      </>
-    );
-  };
 
-  const actionBodyTemplate = () => {
-    return <Button type="button"></Button>;
+
+  const handleDelete = (rowData: any)=>{
+    modals.openConfirmModal({
+    title: <span className="font-serif font-semibold">Are you sure</span>,
+    centered: true,
+    children: (
+      <Text size="sm">
+        You want to cancel this appointment? This action cannot be undone.
+      </Text>
+    ),
+    labels: { confirm: 'Confirm', cancel: 'Cancel' },
+    onConfirm: () => {
+      cancleAppointment(rowData.id).then(()=>{
+        successNotification("Appointment Cancelled Successfully")
+        setAppointment(appointment.filter((appointment)=>appointment.id !== rowData.id? {...appointment, status: "CANCELLED"}: appointment));
+      }).catch((error)=>{
+        errorNotification(error.response?.data?.errorMessage || "Failed to cancle Appointment");
+      });
+      
+    },
+  });
+
+  }
+
+  const actionBodyTemplate = (rowData: any) => {
+    return <div>
+        <ActionIcon color="red" onClick={()=> handleDelete(rowData)}>
+          <IconTrash />
+        </ActionIcon>
+    </div>
   };
 
   const header = renderHeader();
 
+  const handleSubmit = (values:any)=>{
+    if(!values.slot){
+      errorNotification("Please Select Slot");
+      return;
+    }
+
+    const dateObj = values.appointmentDate instanceof Date ? values.appointmentDate : new Date(values.appointmentDate);
+
+    const appointmentTime =  dateObj.toISOString().split("T")[0] + "T" + values.slot;
+    const payload = {
+    patientId: user?.profileId,
+    doctorId: Number(values.doctorId),
+    appointmentTime,
+    reason: values.reason,
+    note: values.note,
+  };
+  scheduleAppointment(payload)
+    .then(() => {
+      successNotification("Appointment Schedule Successfully");
+      close();
+      form.reset();
+      setSlots([]);
+    })
+    .catch((err: any) => {
+      errorNotification(err.response?.data?.message || "Error scheduling appointment");
+    });
+  };
+const timeTamplat=(rowData: any)=>{
+  return <span>{formateDateWithTime(rowData.appointmentTime)}</span>
+}
+
   return (
-    <div className="card">
+    <div className="card" >
       <DataTable
-        value={customers}
+        value={appointment}
         paginator
+        size="small"
         header={header}
         rows={10}
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
         rowsPerPageOptions={[10, 25, 50]}
         dataKey="id"
-        selectionMode="checkbox"
-        selection={selectedCustomers}
-        onSelectionChange={(e) => {
-          const customers = e.value as Customer[];
-          setSelectedCustomers(customers);
-        }}
         filters={filters}
         filterDisplay="menu"
         globalFilterFields={[
-          "name",
-          "country.name",
-          "representative.name",
-          "balance",
+          "doctorName",
+          "reason",
+          "note",
           "status",
         ]}
-        emptyMessage="No customers found."
+        emptyMessage="No appointment found."
         currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
       >
-        <Column
+        {/* <Column
           selectionMode="multiple"
           headerStyle={{ width: "3rem" }}
-        ></Column>
+        ></Column> */}
         <Column
-          field="name"
-          header="Name"
+          field="doctorName"
+          header="Doctor"
           sortable
           filter
           filterPlaceholder="Search by name"
           style={{ minWidth: "14rem" }}
         />
         <Column
-          field="country.name"
-          header="Country"
+          field="appointmentTime"
+          header="Appointment Time"
           sortable
-          filterField="country.name"
+          filter
+          filterPlaceholder="Search by name"
           style={{ minWidth: "14rem" }}
-          body={countryBodyTemplate}
-          filter
-          filterPlaceholder="Search by country"
+          body={timeTamplat}
         />
         <Column
-          header="Agent"
+          field="reason"
+          header="Reason"
           sortable
-          sortField="representative.name"
-          filterField="representative"
-          showFilterMatchModes={false}
-          filterMenuStyle={{ width: "14rem" }}
+          filter
+          filterPlaceholder="Search by name"
           style={{ minWidth: "14rem" }}
-          body={representativeBodyTemplate}
-          filter
-          filterElement={representativeFilterTemplate}
         />
         <Column
-          field="date"
-          header="Date"
+          field="note"
+          header="Notes"
           sortable
-          filterField="date"
-          dataType="date"
-          style={{ minWidth: "12rem" }}
-          body={dateBodyTemplate}
           filter
-          filterElement={dateFilterTemplate}
-        />
-        <Column
-          field="balance"
-          header="Balance"
-          sortable
-          dataType="numeric"
-          style={{ minWidth: "12rem" }}
-          body={balanceBodyTemplate}
-          filter
-          filterElement={balanceFilterTemplate}
+          filterPlaceholder="Search by name"
+          style={{ minWidth: "14rem" }}
         />
         <Column
           field="status"
@@ -446,16 +349,6 @@ const Appointment = () => {
           filterElement={statusFilterTemplate}
         />
         <Column
-          field="activity"
-          header="Activity"
-          sortable
-          showFilterMatchModes={false}
-          style={{ minWidth: "12rem" }}
-          body={activityBodyTemplate}
-          filter
-          filterElement={activityFilterTemplate}
-        />
-        <Column
           headerStyle={{ width: "5rem", textAlign: "center" }}
           bodyStyle={{ textAlign: "center", overflow: "visible" }}
           body={actionBodyTemplate}
@@ -464,10 +357,28 @@ const Appointment = () => {
       <Modal opened={opened} onClose={close} size="lg" title={<div className="text-xl font-semibold">Schedule Appoinment</div>} centered>
         <form onSubmit={form.onSubmit(handleSubmit)} className="grid grid-cols-1 gap-5">
             <Select {...form.getInputProps("doctorId")} withAsterisk data={doctors} label="Doctor" placeholder="Select Doctor" />
-            <DateTimePicker {...form.getInputProps("appointmentDateTime")} withAsterisk label="Appointment Time" placeholder="Pick date and time"/>
-            <TextInput {...form.getInputProps("reason")} withAsterisk label="Reason for Appointment" placeholder="Enter Reason for Appointment"/>
-            <Textarea {...form.getInputProps("note")} label="Additional Notes" placeholder="Enter any additional notes"/>
+            <DatePickerInput minDate={new Date()} {...form.getInputProps("appointmentDate")} withAsterisk  label="Appointment Date" placeholder="Pick date"/>
+             {/* Slots */}
+            <div className="grid grid-cols-4 gap-2">
+            {slots.length === 0 ? (
+            <p>No slots available</p>
+            ) : (
+            slots.map((slot) => (
+            <Button
+            key={slot}
+            type="button"
+            variant={form.values.slot === slot ? "filled" : "outline"}
+            onClick={() => form.setFieldValue("slot", slot)}
+            >
+            {slot}
+            </Button>
+            ))
+            )}
+            </div>
             
+            <Select {...form.getInputProps("reason")} data={appointmentReasons} withAsterisk label="Reason for Appointment" placeholder="Enter Reason for Appointment"/>
+            <Textarea {...form.getInputProps("note")} label="Additional Notes" placeholder="Enter any additional notes"/>
+            <Button type="submit" variant="filled" fullWidth>Schedule</Button>
         </form>
       </Modal>
     </div>

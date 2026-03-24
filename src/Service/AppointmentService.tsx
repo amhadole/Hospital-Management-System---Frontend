@@ -12,4 +12,28 @@ const scheduleAppointment = async(data: any)=>{
     .catch((error:any)=>{throw error;})
 }
 
-export {getAvailableSlots, scheduleAppointment}
+const cancleAppointment = async(id:any)=>{
+    return axiosInstance.put('/appointment/cancel/'+id)
+    .then((response:any)=> response.data)
+    .catch((error:any)=>{throw error;})
+}
+
+const getAppointment = async(id: any)=>{
+    return axiosInstance.get('/appointment/getDetail/'+id)
+    .then((response: any)=>response.data)
+    .catch((error:any)=>{throw error;})
+}
+
+const getAppointmentDetailWithName = async(id: any)=>{
+    return axiosInstance.get('/appointment/get/details/'+id)
+    .then((response:any)=>response.data)
+    .catch((error:any)=>{throw error;})
+}
+
+const getAllAppointmentByPatient = async(patientId: any)=>{
+    return axiosInstance.get('/appointment/getAllByPatient/'+patientId)
+    .then((response:any)=> response.data)
+    .catch((error:any)=>{throw error;})
+}
+
+export {getAvailableSlots, scheduleAppointment, cancleAppointment, getAppointment, getAppointmentDetailWithName, getAllAppointmentByPatient}

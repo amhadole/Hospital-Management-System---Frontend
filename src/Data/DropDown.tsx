@@ -65,5 +65,27 @@ const doctorDepartments = [
   "General Surgery",
   "Emergency Medicine",
   "Pathology",
+]; 
+const appointmentReasons = [
+  "General Consultation",
+  "Follow-up Visit",
+  "Routine Check-up",
+  "Fever / Cold / Flu",
+  "Headache / Migraine",
+  "Stomach Pain / Digestion Issues",
+  "Skin Problems / Allergy",
+  "Diabetes Check",
+  "Blood Pressure Check",
+  "Heart-related Issues",
+  "Respiratory Issues",
+  "Joint Pain / Orthopedic Issue",
+  "Injury / Accident",
+  "Mental Health Consultation",
+  "Pregnancy Checkup",
+  "Child Health Consultation",
+  "Vaccination",
+  "Lab Test Review",
+  "Prescription Renewal",
+  "Other"
 ];
-export { bloodGroups, doctorSpecializations, doctorDepartments, bloodGroup };
+export { bloodGroups, doctorSpecializations, doctorDepartments, bloodGroup, appointmentReasons };

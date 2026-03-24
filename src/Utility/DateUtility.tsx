@@ -9,4 +9,19 @@ const formatDate=(dateString: string | Date)=>{
     });
 }
 
-export {formatDate};
+const formateDateWithTime = (dateString: any)=>{
+    if(!dateString) return undefined;
+     const date = new Date(dateString);
+      const options: Intl.DateTimeFormatOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      };
+      return date.toLocaleString('en-US', options);
+}
+
+export {formatDate, formateDateWithTime};
