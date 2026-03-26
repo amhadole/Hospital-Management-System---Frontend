@@ -88,4 +88,61 @@ const appointmentReasons = [
   "Prescription Renewal",
   "Other"
 ];
-export { bloodGroups, doctorSpecializations, doctorDepartments, bloodGroup, appointmentReasons };
+
+const symptoms = [
+  "Fever",
+  "Cough",
+  "Sneezing",
+  "Runny nose",
+  "Sore throat",
+  "Headache",
+  "Body aches",
+  "Fatigue",
+  "Chills",
+  "Shortness of breath",
+  "Chest pain",
+  "Wheezing",
+  "Nausea",
+  "Vomiting",
+  "Diarrhea",
+  "Loss of appetite",
+  "Weight loss",
+  "Night sweats",
+  "Dizziness",
+  "Blurred vision",
+  "Frequent urination",
+  "Increased thirst",
+  "Abdominal pain",
+  "Bloating",
+  "Indigestion",
+  "Loss of taste",
+  "Loss of smell"
+]; 
+
+const tests = [
+  "Blood Test",
+  "Complete Blood Count (CBC)",
+  "Blood Sugar Test",
+  "Lipid Profile",
+  "Liver Function Test (LFT)",
+  "Kidney Function Test (KFT)",
+  "Thyroid Function Test (TFT)",
+  "Urine Test",
+  "X-Ray",
+  "CT Scan",
+  "MRI Scan",
+  "Ultrasound",
+  "ECG (Electrocardiogram)",
+  "Echocardiogram",
+  "Stress Test",
+  "COVID-19 Test",
+  "Dengue Test",
+  "Malaria Test",
+  "HIV Test",
+  "Biopsy",
+  "Endoscopy",
+  "Colonoscopy",
+  "Allergy Test",
+  "Pregnancy Test"
+];
+export { bloodGroups, doctorSpecializations, doctorDepartments, bloodGroup, appointmentReasons, symptoms, tests };

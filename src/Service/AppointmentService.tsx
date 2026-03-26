@@ -18,7 +18,7 @@ const cancleAppointment = async(id:any)=>{
     .catch((error:any)=>{throw error;})
 }
 
-const getAppointment = async(id: any)=>{
+const getAppointmentDetails = async(id: any)=>{
     return axiosInstance.get('/appointment/getDetail/'+id)
     .then((response: any)=>response.data)
     .catch((error:any)=>{throw error;})
@@ -36,4 +36,10 @@ const getAllAppointmentByPatient = async(patientId: any)=>{
     .catch((error:any)=>{throw error;})
 }
 
-export {getAvailableSlots, scheduleAppointment, cancleAppointment, getAppointment, getAppointmentDetailWithName, getAllAppointmentByPatient}
+const getAllAppointmentByDoctor = async(doctorId: any)=>{
+    return axiosInstance.get('/appointment/getAllByDoctor/'+doctorId)
+    .then((response: any)=> response.data)
+    .catch((error:any)=>{throw error;})
+}
+
+export {getAvailableSlots, scheduleAppointment, cancleAppointment, getAppointmentDetails, getAppointmentDetailWithName, getAllAppointmentByPatient, getAllAppointmentByDoctor}

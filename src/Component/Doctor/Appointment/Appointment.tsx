@@ -5,19 +5,20 @@ import { Column, ColumnFilterElementTemplateOptions } from "primereact/column";
 import { Dropdown, DropdownChangeEvent } from "primereact/dropdown";
 import { Tag } from "primereact/tag";
 import { ActionIcon, Button, Modal, SegmentedControl, Select, Text, Textarea, TextInput } from "@mantine/core";
-import { IconPlus, IconSearch, IconTrash } from "@tabler/icons-react";
+import { IconEye, IconSearch, IconTrash } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
 import { getDoctorDropdown } from "../../../Service/DoctorProfileServices";
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { ScheduleAppointmentFormValue } from "./ScheduleAppointmentFormValue";
-import { cancleAppointment, getAllAppointmentByPatient, getAvailableSlots, scheduleAppointment } from "../../../Service/AppointmentService";
+import { cancleAppointment, getAllAppointmentByDoctor,  getAvailableSlots, scheduleAppointment } from "../../../Service/AppointmentService";
 import { useSelector } from "react-redux";
 import { errorNotification, successNotification } from "../../../Utility/Notification";
 import { appointmentReasons } from "../../../Data/DropDown";
 import { formateDateWithTime } from "../../../Utility/DateUtility";
 import { modals } from "@mantine/modals";
 import { Toolbar } from "primereact/toolbar";
+import { useNavigate } from "react-router-dom";
 
 
 interface Country {
@@ -44,7 +45,8 @@ interface Customer {
 }
 
 const Appointment = () => {
-  const [opened, { open, close }] = useDisclosure(false);
+  const navigate = useNavigate();
+  const [opened, { close }] = useDisclosure(false);
   const[doctors, setDoctors] = useState<any[]>([]);
   const [slots, setSlots] = useState<string[]>([]);
   const [tab, setTab] = useState<string>('Today');
@@ -111,7 +113,7 @@ const Appointment = () => {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchData = ()=>{
-    getAllAppointmentByPatient(user.profileId).then((res)=>{
+    getAllAppointmentByDoctor(user.profileId).then((res)=>{
       setAppointment(res.data);
     }).catch((error)=>{
       console.error("Error fetching appointment:", error)
@@ -244,7 +246,10 @@ const Appointment = () => {
   }
 
   const actionBodyTemplate = (rowData: any) => {
-    return <div>
+    return <div className="flex gap-2">
+        <ActionIcon  onClick={()=> navigate(""+ rowData.id)}>
+          <IconEye />
+        </ActionIcon>
         <ActionIcon color="red" onClick={()=> handleDelete(rowData)}>
           <IconTrash />
         </ActionIcon>
@@ -284,11 +289,11 @@ const Appointment = () => {
 const timeTamplat=(rowData: any)=>{
   return <span>{formateDateWithTime(rowData.appointmentTime)}</span>
 }
-const leftToolbarTemplate = () => {
-        return (
-        <Button leftSection={<IconPlus />} onClick={open} variant="filled">Schedule Appoinment</Button>
-        );
-    };
+// const leftToolbarTemplate = () => {
+//         return (
+//         <Button leftSection={<IconPlus />} onClick={open} variant="filled">Schedule Appoinment</Button>
+//         );
+//     };
 
     const rightToolbarTemplate = () => {
         return <TextInput
@@ -331,7 +336,7 @@ const leftToolbarTemplate = () => {
 
   return (
     <div className="card" >
-      <Toolbar className="mb-4" start={leftToolbarTemplate} center={centerToolbarTemplate} end={rightToolbarTemplate}></Toolbar>
+      <Toolbar className="mb-4" start={centerToolbarTemplate} end={rightToolbarTemplate}></Toolbar>
       <DataTable
         value={filteredAppointments}
         paginator
@@ -343,7 +348,7 @@ const leftToolbarTemplate = () => {
         filters={filters}
         filterDisplay="menu"
         globalFilterFields={[
-          "doctorName",
+          "patientName",
           "reason",
           "note",
           "status",
@@ -356,8 +361,8 @@ const leftToolbarTemplate = () => {
           headerStyle={{ width: "3rem" }}
         ></Column> */}
         <Column
-          field="doctorName"
-          header="Doctor"
+          field="patientName"
+          header="Patient"
           sortable
           filter
           filterPlaceholder="Search by name"
